@@ -1,32 +1,26 @@
-
-# coding: utf-8
-
-# In[1]:
-
-
 import requests 
 import json
 
 import os
+
 import pandas as pd
 import numpy as np
+
 import math
 import re
+
 import time
 
+# Import and load env vars, see .env
+from dotenv import load_dotenv
+load_dotenv()
 
-# In[2]:
-
-
-#legal intelligence credentials
-CLIENT_ID = 'marion.meyers@student.maastrichtuniversity.nl'
-CLIENT_SECRET = '8bf03e23-1faf-430d-a5a5-ab907b5af436'
+# Legal intelligence credentials
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
 
 # # Methods needed for using the LI API
-
-# In[3]:
-
 
 def get_access_token():
     data = {
@@ -41,16 +35,13 @@ def get_access_token():
      "cache-control": "no-cache"
     }
 
-    request = requests.post('https://api.legalintelligence.com/token', data=data, headers=headers)
-    #print('Auth status code: %s' %request.status_code)
-
-    response = request.json()
-    #print('Auth access code: %s' %response['access_token'])
-    
-    return response['access_token']
-
-
-# In[4]:
+    try:
+        request = requests.post('https://api.legalintelligence.com/token', data=data, headers=headers)
+        response = request.json()
+        return response['access_token']
+    except:
+        print(f'NO AUTH CODE {request}')
+    return None
 
 
 def get_search_query(query, filters=[]):
@@ -71,7 +62,6 @@ def get_search_query(query, filters=[]):
     
     request = requests.get(link, headers=headers, params = params)
     
-    
     #total number of cases retrieved by the given query
     count = request.json()["Count"]
     print("case count : "+str(count))
@@ -85,8 +75,10 @@ def get_search_query(query, filters=[]):
     pages = list()
 
     #append the first request to the list of request dictionaries
-    pages.append(request.json())
-    
+    try:
+        pages.append(request.json())
+    except:
+        print(f'JSON ${link} FAILED')
     
     #go through all pages, and add each dictionary request to the list until no more pages
     while page_index < nb_pages: 
@@ -99,16 +91,19 @@ def get_search_query(query, filters=[]):
         if (page_index/50).is_integer():
             print('put computer to sleep, it has been 50 request')
             time.sleep(70)
-            request = requests.get(link, headers=headers, params = params)
-            pages.append(request.json())
-            page_index = page_index + 1
-        else:
-            request = requests.get(link, headers=headers, params = params)
-            #here I am unsure what the error exactly is... so for now I just excluse it as an exception
             try:
+                request = requests.get(link, headers=headers, params = params)
                 pages.append(request.json())
             except:
-                print('weird error')
+                print(f'GET ${link} FAILED')
+            page_index = page_index + 1
+        else:
+            #here I am unsure what the error exactly is... so for now I just excluse it as an exception
+            try:
+                request = requests.get(link, headers=headers, params = params)
+                pages.append(request.json())
+            except:
+                print(f'GET ${link} FAILED')
                 #print(request.json())
             page_index = page_index + 1  
 
@@ -132,9 +127,6 @@ def get_search_query(query, filters=[]):
 
 # Now, in order to be able to merge informations from Rechtspraak and Legal Intelligence, we need to match the corresponding cases. To do this, we will use the ECLI number. However, this number is not present in the json format output by Legal Intelligence, but it is present in the request.text format that we can also have from our query. 
 
-# In[5]:
-
-
 #retrieve the document based on its id
 def get_document(id):
     headers = {    
@@ -143,13 +135,12 @@ def get_document(id):
         "accept": "application/json"  
     }
 
-    request = requests.get('https://api.legalintelligence.com/documents/%s' %id, headers=headers)
+    try: 
+        request = requests.get('https://api.legalintelligence.com/documents/%s' %id, headers=headers)
+    except:
+        print(f'GET DOC ${id} FAILED')
     
     return request.text
-
-
-# In[6]:
-
 
 #this method takes the case text as an argument, searches for teh ecli number and outputs it. 
 def getECLInumber(caseText):
@@ -166,9 +157,6 @@ def getECLInumber(caseText):
     return ecliNumber 
 
 
-# In[7]:
-
-
 def saveTextToArchive(year, ecliNumber, caseText, save_path):
     print('saving case as html file')
     
@@ -178,10 +166,6 @@ def saveTextToArchive(year, ecliNumber, caseText, save_path):
     file = open(save_path_html, "w", encoding="utf-8")
     file.write(caseText)
     file.close()
-
-
-# In[8]:
-
 
 def saveJsonToArchive(year, ecliNumber, json_file):
     print('saving case as a json file')
@@ -292,7 +276,9 @@ def createLIDataframe(year_dump, save_path, id_list, json_files):
 #list of years we want to retrieve LI cases for
 years = list(range(1913, 2000))
 #where we want to store the csv files as well as the individual html docs
-save_path = "../../data/cases"
+save_path = "."
+svae_path_large_file = "."
+total_LI_df = pd.DataFrame()
 
 for year in years:
     #time.sleep(70)
@@ -312,12 +298,14 @@ for year in years:
     #create dataframe
     #os.mkdir(save_path+'/'+str(year)+'/')
     LI_df = createLIDataframe(str(year), save_path, ids, json_files)
+    total_LI_df = total_LI_df.append(LI_df, ignore_index=True)
     LI_df.to_csv(save_path+'/'+str(year)+'/'+str(year)+'.csv')
+    #print(total_LI_df.head())
+    print('total shape : '+str(total_LI_df.shape))
+    #print('column names : '+str(total_LI_df.columns))
+total_LI_df.to_csv(save_path+'legal_intelligence_cases.csv')
     
 
 
 # In[23]:
-
-
-get_document(4598940)
 
