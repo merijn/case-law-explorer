@@ -28,7 +28,7 @@ def get_date(url):
 
 if __name__ == '__main__':
     # Define the base URL
-    url = "https://data.rechtspraak.nl/uitspraken/zoeken?id=ECLI:NL:RBNHO:2022:3779"
+    url = "https://uitspraken.rechtspraak.nl/InzienDocument?id=ECLI:NL:RBNHO:2022:3779"
     print("Rechtspraak metadata API")
 
     response_code = check_api(url)
