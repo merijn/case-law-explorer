@@ -6,7 +6,7 @@ from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from os.path import dirname, abspath
 sys.path.append (dirname(dirname(abspath(__file__))))
-from data_extraction.caselaw.cellar.cellar_extraction import download_locally
+from data_extraction.caselaw.cellar.cellar_extraction import cellar_extract
 default_args = {
     'owner': 'none',
     'retries': 5,
@@ -23,7 +23,9 @@ with DAG(
     schedule_interval='@weekly'
 
 ) as DAG:
+    as dag:
     task1 = PythonOperator(
-        task_id='cellar_transformation',
-        python_callable=download_locally
+        task_id='greet',
+        python_callable=cellar_extract,
+        op_args=['local','--amount','50']
     )
