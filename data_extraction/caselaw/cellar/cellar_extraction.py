@@ -1,23 +1,35 @@
 import json
+# import glob
 from os.path import dirname, abspath, basename, join
-from os import getenv
+# from os import getenv
 import sys
 
 sys.path.append(dirname(dirname(dirname(dirname(abspath(__file__))))))
-import urllib.request
+# import urllib.request
 import time
 from datetime import datetime
-from definitions.storage_handler import CELLAR_DIR, Storage
+from definitions.storage_handler import CELLAR_DIR, Storage, DIR_ROOT
 import argparse
 
 from SPARQLWrapper import SPARQLWrapper, JSON, POST
-from os.path import exists
+# from os.path import exists
 
 start = time.time()
 
 # We set the filename to the current date/time for later reference if we want to incrementally build.
 run_date = datetime.now().isoformat(timespec='seconds')
 output_path = join(CELLAR_DIR, run_date.replace(':', '_') + '.json')
+
+
+cols_file = DIR_ROOT + "/definitions/columns.txt"
+with open(cols_file) as file:
+    cols = file.readlines()
+    cols = [line.rstrip() for line in cols]
+
+cols = list(dict.fromkeys(cols))
+
+# Remove duplicate list items, just in case
+cols = [*set(cols)]
 
 
 def get_all_eclis(starting_ecli=None, starting_date=None):
@@ -65,7 +77,6 @@ def get_all_eclis(starting_ecli=None, starting_date=None):
         eclis.append(res['ecli']['value'])
 
     return eclis
-
 
 def get_raw_cellar_metadata(eclis, get_labels=True, force_readable_cols=True, force_readable_vals=False):
     """Gets cellar metadata
@@ -145,10 +156,11 @@ def get_raw_cellar_metadata(eclis, get_labels=True, force_readable_cols=True, fo
         # We store the values for each property in a list.
         # For some properties this is not necessary, but if a property can be assigned multiple times, this is important.
         # Notable, for example is citations.b
-        if key in metadata[ecli]:
-            metadata[ecli][key].append(val)
-        else:
-            metadata[ecli][key] = [val]
+        if key.upper() in cols:
+            if key in metadata[ecli]:
+                metadata[ecli][key].append(val)
+            else:
+                metadata[ecli][key] = [val]
 
     return metadata
 
