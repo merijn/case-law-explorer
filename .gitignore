@@ -226,3 +226,4 @@ ttt/
 
 ignore/
 /data/
+/airflow
